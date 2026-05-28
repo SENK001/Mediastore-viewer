@@ -3,8 +3,8 @@ package com.senk.mediastoreviewer.data
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.database.Cursor
-import android.net.Uri
 import android.provider.MediaStore
+import androidx.compose.runtime.Immutable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -82,6 +82,7 @@ class MediaRepository(private val contentResolver: ContentResolver) {
         return result
     }
 
+    @Immutable
     data class FieldEntry(val name: String, val value: String)
 
     suspend fun queryItemFields(id: Long, isVideo: Boolean): List<FieldEntry> = withContext(Dispatchers.IO) {

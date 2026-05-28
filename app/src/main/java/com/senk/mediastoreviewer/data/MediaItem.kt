@@ -1,7 +1,9 @@
 package com.senk.mediastoreviewer.data
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 
+@Immutable
 data class MediaItem(
     val id: Long,
     val displayName: String,
