@@ -11,12 +11,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -46,6 +49,14 @@ fun FileDetailScreen(
     var fields by remember { mutableStateOf<List<MediaRepository.FieldEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
+    var isSearchVisible by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredFields = remember(fields, searchQuery) {
+        if (searchQuery.isBlank()) fields
+        else fields.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
     LaunchedEffect(itemId) {
         isLoading = true
         viewModel.queryItemFields(itemId, isVideo) { result ->
@@ -56,20 +67,52 @@ fun FileDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = item?.displayName ?: "详情",
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+            Column {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = item?.displayName ?: "详情",
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            isSearchVisible = !isSearchVisible
+                            if (!isSearchVisible) searchQuery = ""
+                        }) {
+                            Icon(
+                                imageVector = if (isSearchVisible) Icons.Default.Close else Icons.Default.Search,
+                                contentDescription = if (isSearchVisible) "关闭搜索" else "搜索"
+                            )
+                        }
                     }
+                )
+                if (isSearchVisible) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        singleLine = true,
+                        placeholder = { Text("搜索字段") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "清除")
+                                }
+                            }
+                        }
+                    )
                 }
-            )
+            }
         }
     ) { padding ->
         Box(
@@ -84,9 +127,14 @@ fun FileDetailScreen(
                     text = "无法读取媒体信息",
                     modifier = Modifier.align(Alignment.Center)
                 )
+            } else if (filteredFields.isEmpty()) {
+                Text(
+                    text = "未找到匹配的字段",
+                    modifier = Modifier.align(Alignment.Center)
+                )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(items = fields, key = { it.name }) { entry ->
+                    items(items = filteredFields, key = { it.name }) { entry ->
                         FieldRow(name = entry.name, value = entry.value)
                     }
                 }
