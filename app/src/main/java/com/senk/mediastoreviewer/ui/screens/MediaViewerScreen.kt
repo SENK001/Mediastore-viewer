@@ -3,26 +3,28 @@ package com.senk.mediastoreviewer.ui.screens
 import android.app.Activity
 import android.net.Uri
 import android.view.LayoutInflater
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.exoplayer.ExoPlayer
@@ -54,21 +57,69 @@ fun MediaViewerScreen(
 ) {
     val item = viewModel.getItemById(itemId)
     val view = LocalView.current
+    var isImmersive by remember { mutableStateOf(false) }
+    val initialLightStatusBars = remember {
+        WindowInsetsControllerCompat(
+            (view.context as Activity).window,
+            view
+        ).isAppearanceLightStatusBars
+    }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(isImmersive) {
         val controller = WindowInsetsControllerCompat(
             (view.context as Activity).window,
             view
         )
-        val previous = controller.isAppearanceLightStatusBars
-        controller.isAppearanceLightStatusBars = false
+        if (isImmersive) {
+            controller.isAppearanceLightStatusBars = false
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            controller.isAppearanceLightStatusBars = true
+        }
         onDispose {
-            controller.isAppearanceLightStatusBars = previous
+            controller.show(WindowInsetsCompat.Type.systemBars())
+            controller.isAppearanceLightStatusBars = initialLightStatusBars
         }
     }
 
-    Scaffold(
-        topBar = {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (isImmersive) Color.Black else Color.White)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            if (item != null) {
+                if (isVideo) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onTap = { isImmersive = !isImmersive }
+                                )
+                            }
+                    ) {
+                        VideoPlayer(uri = item.uri)
+                    }
+                } else {
+                    ZoomableImage(
+                        uri = item.uri,
+                        onToggleImmersive = { isImmersive = !isImmersive }
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = !isImmersive,
+            enter = fadeIn(animationSpec = tween(300)),
+            exit = fadeOut(animationSpec = tween(300))
+        ) {
             TopAppBar(
                 title = {
                     Text(
@@ -86,37 +137,14 @@ fun MediaViewerScreen(
                     IconButton(onClick = onNavigateToDetail) {
                         Icon(Icons.Outlined.Info, contentDescription = "查看详情")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Black.copy(alpha = 0.6f),
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
-                )
-            )
-        },
-        containerColor = Color.Black
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            if (item != null) {
-                if (isVideo) {
-                    VideoPlayer(uri = item.uri)
-                } else {
-                    ZoomableImage(uri = item.uri)
                 }
-            }
+            )
         }
     }
 }
 
 @Composable
-private fun ZoomableImage(uri: Uri) {
+private fun ZoomableImage(uri: Uri, onToggleImmersive: () -> Unit) {
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
@@ -140,6 +168,7 @@ private fun ZoomableImage(uri: Uri) {
             }
             .pointerInput(Unit) {
                 detectTapGestures(
+                    onTap = { onToggleImmersive() },
                     onDoubleTap = {
                         if (scale > 1.5f) {
                             scale = 1f
