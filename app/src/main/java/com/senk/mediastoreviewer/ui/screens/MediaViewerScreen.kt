@@ -2,6 +2,7 @@ package com.senk.mediastoreviewer.ui.screens
 
 import android.app.Activity
 import android.net.Uri
+import android.view.LayoutInflater
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +40,7 @@ import androidx.media3.common.MediaItem as Media3Item
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.senk.mediastoreviewer.R
 import com.senk.mediastoreviewer.viewmodel.MediaViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +49,8 @@ fun MediaViewerScreen(
     itemId: Long,
     isVideo: Boolean,
     viewModel: MediaViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToDetail: () -> Unit
 ) {
     val item = viewModel.getItemById(itemId)
     val view = LocalView.current
@@ -78,10 +82,16 @@ fun MediaViewerScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
                     }
                 },
+                actions = {
+                    IconButton(onClick = onNavigateToDetail) {
+                        Icon(Icons.Outlined.Info, contentDescription = "查看详情")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black.copy(alpha = 0.6f),
                     titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
@@ -177,10 +187,11 @@ private fun VideoPlayer(uri: Uri) {
 
     AndroidView(
         factory = { ctx ->
-            PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = true
-            }
+            val playerView = LayoutInflater.from(ctx)
+                .inflate(R.layout.player_view, null) as PlayerView
+            playerView.player = exoPlayer
+            playerView.useController = true
+            playerView
         },
         modifier = Modifier.fillMaxSize()
     )

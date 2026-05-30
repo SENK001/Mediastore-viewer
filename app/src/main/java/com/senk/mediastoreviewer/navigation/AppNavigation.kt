@@ -1,5 +1,8 @@
 package com.senk.mediastoreviewer.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -60,7 +63,7 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
                 directoryName = directoryName,
                 viewModel = viewModel,
                 onItemClick = { itemId, isVideo ->
-                    navController.navigate(NavRoutes.fileDetail(itemId, isVideo))
+                    navController.navigate(NavRoutes.mediaViewer(itemId, isVideo))
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -80,8 +83,7 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
                 itemId = itemId,
                 isVideo = isVideo,
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() },
-                onNavigateToViewer = { navController.navigate(NavRoutes.mediaViewer(itemId, isVideo)) }
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -90,7 +92,11 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
             arguments = listOf(
                 navArgument("itemId") { type = NavType.LongType },
                 navArgument("isVideo") { type = NavType.BoolType }
-            )
+            ),
+            enterTransition = { fadeIn(animationSpec = tween(300)) },
+            exitTransition = { fadeOut(animationSpec = tween(300)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+            popExitTransition = { fadeOut(animationSpec = tween(300)) }
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getLong("itemId") ?: 0L
             val isVideo = backStackEntry.arguments?.getBoolean("isVideo") ?: false
@@ -99,7 +105,8 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
                 itemId = itemId,
                 isVideo = isVideo,
                 viewModel = viewModel,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { navController.navigate(NavRoutes.fileDetail(itemId, isVideo)) }
             )
         }
     }
