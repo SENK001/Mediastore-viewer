@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.senk.mediastoreviewer.ui.screens.DirectoryListScreen
 import com.senk.mediastoreviewer.ui.screens.FileDetailScreen
 import com.senk.mediastoreviewer.ui.screens.FileListScreen
+import com.senk.mediastoreviewer.ui.screens.MediaViewerScreen
 import com.senk.mediastoreviewer.viewmodel.MediaViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -18,6 +19,7 @@ object NavRoutes {
     const val DIRECTORY_LIST = "directory_list"
     const val FILE_LIST = "file_list/{directoryName}"
     const val FILE_DETAIL = "file_detail/{itemId}/{isVideo}"
+    const val MEDIA_VIEWER = "media_viewer/{itemId}/{isVideo}"
 
     fun fileList(directoryName: String): String {
         val encoded = URLEncoder.encode(directoryName, "UTF-8")
@@ -26,6 +28,10 @@ object NavRoutes {
 
     fun fileDetail(itemId: Long, isVideo: Boolean): String {
         return "file_detail/$itemId/$isVideo"
+    }
+
+    fun mediaViewer(itemId: Long, isVideo: Boolean): String {
+        return "media_viewer/$itemId/$isVideo"
     }
 }
 
@@ -71,6 +77,25 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
             val isVideo = backStackEntry.arguments?.getBoolean("isVideo") ?: false
 
             FileDetailScreen(
+                itemId = itemId,
+                isVideo = isVideo,
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onNavigateToViewer = { navController.navigate(NavRoutes.mediaViewer(itemId, isVideo)) }
+            )
+        }
+
+        composable(
+            route = NavRoutes.MEDIA_VIEWER,
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.LongType },
+                navArgument("isVideo") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val itemId = backStackEntry.arguments?.getLong("itemId") ?: 0L
+            val isVideo = backStackEntry.arguments?.getBoolean("isVideo") ?: false
+
+            MediaViewerScreen(
                 itemId = itemId,
                 isVideo = isVideo,
                 viewModel = viewModel,

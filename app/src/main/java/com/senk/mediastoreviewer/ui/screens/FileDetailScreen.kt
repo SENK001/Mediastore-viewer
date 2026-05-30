@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +44,8 @@ fun FileDetailScreen(
     itemId: Long,
     isVideo: Boolean,
     viewModel: MediaViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToViewer: () -> Unit
 ) {
     val item = viewModel.getItemById(itemId)
     var fields by remember { mutableStateOf<List<MediaRepository.FieldEntry>>(emptyList()) }
@@ -82,6 +84,9 @@ fun FileDetailScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = onNavigateToViewer) {
+                            Icon(Icons.Filled.OpenInFull, contentDescription = "查看媒体")
+                        }
                         IconButton(onClick = {
                             isSearchVisible = !isSearchVisible
                             if (!isSearchVisible) searchQuery = ""
@@ -164,7 +169,7 @@ private fun FieldRow(name: String, value: String) {
         )
     }
     HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
+        modifier = Modifier.padding(horizontal = 16.dp),
         thickness = 0.5.dp
     )
 }
