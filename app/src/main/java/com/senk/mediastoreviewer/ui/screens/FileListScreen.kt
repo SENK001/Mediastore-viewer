@@ -156,9 +156,4 @@ private fun FileItem(
             overflow = TextOverflow.Ellipsis
         )
     }
-
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp
-    )
 }

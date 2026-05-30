@@ -186,14 +186,9 @@ private fun DirectoryItem(
         }
 
         Text(
-            text = "(${directory.count})",
+            text = "${directory.count}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
-
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 16.dp),
-        thickness = 0.5.dp
-    )
 }
