@@ -1,6 +1,7 @@
 package com.senk.mediastoreviewer.viewmodel
 
 import android.app.Application
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ data class DirectoryGroup(
     val isVirtual: Boolean = false
 ) {
     val count: Int get() = items.size
+    val thumbnailUri: Uri? get() = items.firstOrNull()?.uri
 }
 
 class MediaViewModel(application: Application) : AndroidViewModel(application) {
@@ -81,17 +83,35 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
     private fun buildDirectories(items: List<MediaItem>): List<DirectoryGroup> {
         if (items.isEmpty()) return emptyList()
         val dirs = mutableListOf<DirectoryGroup>()
+        val usedBucketNames = mutableSetOf<String>()
 
         dirs.add(DirectoryGroup("全部", items, isVirtual = true))
+
+        val cameraItems = findBucketItems(items, setOf("camera"), usedBucketNames)
+        if (cameraItems != null) {
+            dirs.add(DirectoryGroup("相机", cameraItems))
+        }
+
+        val videoItems = items.filter { it.isVideo }
+        if (videoItems.isNotEmpty()) {
+            dirs.add(DirectoryGroup("视频", videoItems, isVirtual = true))
+        }
 
         val favorites = items.filter { it.isFavorite }
         if (favorites.isNotEmpty()) {
             dirs.add(DirectoryGroup("收藏", favorites, isVirtual = true))
         }
 
+        val rawItems = findBucketItems(items, setOf("raw"), usedBucketNames)
+        if (rawItems != null) {
+            dirs.add(DirectoryGroup("Raw", rawItems))
+        }
+
         val bucketMap = linkedMapOf<String, MutableList<MediaItem>>()
         for (item in items) {
-            bucketMap.getOrPut(item.bucketDisplayName) { mutableListOf() }.add(item)
+            if (item.bucketDisplayName !in usedBucketNames) {
+                bucketMap.getOrPut(item.bucketDisplayName) { mutableListOf() }.add(item)
+            }
         }
 
         bucketMap.entries
@@ -101,5 +121,19 @@ class MediaViewModel(application: Application) : AndroidViewModel(application) {
             }
 
         return dirs
+    }
+
+    private fun findBucketItems(
+        items: List<MediaItem>,
+        keywords: Set<String>,
+        used: MutableSet<String>
+    ): List<MediaItem>? {
+        val bucketName = items.map { it.bucketDisplayName }
+            .distinct()
+            .firstOrNull { name ->
+                keywords.any { kw -> name.contains(kw, ignoreCase = true) }
+            } ?: return null
+        used.add(bucketName)
+        return items.filter { it.bucketDisplayName == bucketName }
     }
 }

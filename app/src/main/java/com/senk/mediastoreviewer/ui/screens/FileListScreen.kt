@@ -1,5 +1,8 @@
 package com.senk.mediastoreviewer.ui.screens
 
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -19,7 +23,6 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,16 +31,29 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.SubcomposeAsyncImage
 import com.senk.mediastoreviewer.data.MediaItem
 import com.senk.mediastoreviewer.viewmodel.MediaViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+
+private val videoThumbnailCache = ConcurrentHashMap<Long, Bitmap>()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,10 +134,7 @@ fun FileListScreen(
             ) {
                 items(items = filteredItems, key = { it.id }) { item ->
                     val onClick = remember(item.id) { { onItemClick(item.id, item.isVideo) } }
-                    FileItem(
-                        item = item,
-                        onClick = onClick
-                    )
+                    FileItem(item = item, onClick = onClick)
                 }
             }
         }
@@ -133,19 +146,70 @@ private fun FileItem(
     item: MediaItem,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val thumbnailShape = RoundedCornerShape(6.dp)
+
+    var videoBitmap by remember(item.id) {
+        mutableStateOf(videoThumbnailCache[item.id])
+    }
+
+    if (item.isVideo && videoBitmap == null) {
+        LaunchedEffect(item.id) {
+            val bitmap = withContext(Dispatchers.IO) {
+                try {
+                    context.contentResolver.loadThumbnail(
+                        item.uri,
+                        android.util.Size(256, 256),
+                        null
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            if (bitmap != null) {
+                videoThumbnailCache[item.id] = bitmap
+                videoBitmap = bitmap
+            }
+        }
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = if (item.isVideo) Icons.Default.Videocam else Icons.Default.Image,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(thumbnailShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+            contentAlignment = Alignment.Center
+        ) {
+            when {
+                item.isVideo && videoBitmap != null -> {
+                    Image(
+                        bitmap = videoBitmap!!.asImageBitmap(),
+                        contentDescription = item.displayName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                item.isVideo && videoBitmap == null -> {
+                    ThumbnailPlaceholder(icon = Icons.Default.Videocam)
+                }
+                !item.isVideo -> {
+                    SubcomposeAsyncImage(
+                        model = item.uri,
+                        contentDescription = item.displayName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                        error = { ThumbnailPlaceholder(icon = Icons.Default.Image) }
+                    )
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.width(12.dp))
 
@@ -156,4 +220,14 @@ private fun FileItem(
             overflow = TextOverflow.Ellipsis
         )
     }
+}
+
+@Composable
+private fun ThumbnailPlaceholder(icon: ImageVector) {
+    Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier.size(22.dp),
+        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    )
 }
