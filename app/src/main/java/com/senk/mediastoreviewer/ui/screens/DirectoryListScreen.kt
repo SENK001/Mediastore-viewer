@@ -23,11 +23,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.CircularProgressIndicator
@@ -35,7 +33,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -76,63 +73,23 @@ fun DirectoryListScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    var isSearchVisible by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredDirectories = remember(directories, searchQuery) {
-        if (searchQuery.isBlank()) directories
-        else directories.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val specialDirs = remember(directories) {
+        directories.filter { it.name in specialNames }
     }
-
-    val isSearching = searchQuery.isNotBlank()
-
-    val specialDirs = remember(filteredDirectories) {
-        filteredDirectories.filter { it.name in specialNames }
-    }
-    val otherDirs = remember(filteredDirectories) {
-        filteredDirectories.filter { it.name !in specialNames }
+    val otherDirs = remember(directories) {
+        directories.filter { it.name !in specialNames }
     }
 
     Scaffold(
         topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text("MediaStore Viewer") },
-                    actions = {
-                        IconButton(onClick = {
-                            isSearchVisible = !isSearchVisible
-                            if (!isSearchVisible) searchQuery = ""
-                        }) {
-                            Icon(
-                                imageVector = if (isSearchVisible) Icons.Default.Close else Icons.Default.Search,
-                                contentDescription = if (isSearchVisible) "关闭搜索" else "搜索"
-                            )
-                        }
-                        IconButton(onClick = { viewModel.loadMedia() }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                        }
+            TopAppBar(
+                title = { Text("MediaStore Viewer") },
+                actions = {
+                    IconButton(onClick = { viewModel.loadMedia() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
-                )
-                if (isSearchVisible) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        singleLine = true,
-                        placeholder = { Text("搜索目录") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        trailingIcon = {
-                            if (searchQuery.isNotEmpty()) {
-                                IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Close, contentDescription = "清除")
-                                }
-                            }
-                        }
-                    )
                 }
-            }
+            )
         }
     ) { padding ->
         Box(
@@ -157,12 +114,6 @@ fun DirectoryListScreen(
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }
-                filteredDirectories.isEmpty() -> {
-                    Text(
-                        text = "未找到匹配的目录",
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
                 else -> {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
@@ -176,7 +127,7 @@ fun DirectoryListScreen(
                             DirectoryCard(directory = dir, onClick = onClick)
                         }
 
-                        if (otherDirs.isNotEmpty() && !isSearching) {
+                        if (otherDirs.isNotEmpty()) {
                             item(
                                 key = "header_more_albums",
                                 span = { GridItemSpan(maxLineSpan) }
