@@ -14,6 +14,7 @@ import com.senk.mediastoreviewer.ui.screens.DirectoryListScreen
 import com.senk.mediastoreviewer.ui.screens.FileDetailScreen
 import com.senk.mediastoreviewer.ui.screens.FileListScreen
 import com.senk.mediastoreviewer.ui.screens.MediaViewerScreen
+import com.senk.mediastoreviewer.ui.screens.PhotoWallScreen
 import com.senk.mediastoreviewer.viewmodel.MediaViewModel
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -23,6 +24,12 @@ object NavRoutes {
     const val FILE_LIST = "file_list/{directoryName}"
     const val FILE_DETAIL = "file_detail/{itemId}/{isVideo}"
     const val MEDIA_VIEWER = "media_viewer/{itemId}/{isVideo}"
+    const val PHOTO_WALL = "photo_wall/{directoryName}"
+
+    fun photoWall(directoryName: String): String {
+        val encoded = URLEncoder.encode(directoryName, "UTF-8")
+        return "photo_wall/$encoded"
+    }
 
     fun fileList(directoryName: String): String {
         val encoded = URLEncoder.encode(directoryName, "UTF-8")
@@ -47,7 +54,7 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
             DirectoryListScreen(
                 viewModel = viewModel,
                 onDirectoryClick = { directoryName ->
-                    navController.navigate(NavRoutes.fileList(directoryName))
+                    navController.navigate(NavRoutes.photoWall(directoryName))
                 }
             )
         }
@@ -83,6 +90,23 @@ fun AppNavigation(viewModel: MediaViewModel = viewModel()) {
                 itemId = itemId,
                 isVideo = isVideo,
                 viewModel = viewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = NavRoutes.PHOTO_WALL,
+            arguments = listOf(navArgument("directoryName") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val encodedName = backStackEntry.arguments?.getString("directoryName") ?: ""
+            val directoryName = URLDecoder.decode(encodedName, "UTF-8")
+
+            PhotoWallScreen(
+                directoryName = directoryName,
+                viewModel = viewModel,
+                onItemClick = { itemId, isVideo ->
+                    navController.navigate(NavRoutes.mediaViewer(itemId, isVideo))
+                },
                 onBack = { navController.popBackStack() }
             )
         }
