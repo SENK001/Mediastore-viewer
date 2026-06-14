@@ -1,16 +1,17 @@
 # MediaStore Viewer
 
-一款基于 **Jetpack Compose** 的 Android 媒体文件浏览器，用于查看设备上 **MediaStore** 中所有的图片与视频，并支持按目录浏览、收藏筛选、字段级详情查看以及全屏媒体预览。
+一款基于 **Jetpack Compose** 的 Android 媒体文件浏览器，用于查看设备 **MediaStore** 中的图片与视频，支持按目录浏览、OpenGL 照片墙、全屏媒体预览以及字段级详情查看。
 
 ## 功能
 
-- **目录浏览** — 按存储桶（Bucket）自动分组展示所有媒体文件，同时提供"全部"和"收藏"两个虚拟分组
-- **文件列表** — 浏览每个目录下的图片和视频，支持搜索过滤
-- **字段详情** — 查看任一媒体文件的 **完整 ContentProvider 字段**（适合调试和开发者使用），字段名和值均可搜索
-- **媒体预览** — 图片支持双指缩放和双击放大/还原；视频基于 **ExoPlayer** 播放，带系统控制器
-- **权限适配** — Android 13 (Tiramisu) 及以上使用细粒度媒体权限 (`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`)；低版本使用 `READ_EXTERNAL_STORAGE`
-- **动态取色** — Android 12+ 支持 Material You 动态颜色，同时提供深色/浅色主题
-- **边缘到边缘** — 适配全面屏，状态栏透明沉浸
+- **目录浏览** — 按存储桶（Bucket）自动分组，特殊分组（全部/相机/视频/收藏/Raw）置顶，剩余相册按字母排列
+- **无感刷新** — 页面可见时自动刷新数据，已有数据时静默更新，无需手动操作
+- **OpenGL 照片墙** — 基于 `GLSurfaceView` 的高性能网格渲染，支持惯性滚动（fling），纹理 LRU 缓存，加载渐进式占位
+- **全屏媒体预览** — 图片：Coil 加载 + 双指缩放/双击放大；视频：ExoPlayer 播放；单击可切换沉浸模式（隐藏标题栏/状态栏/导航栏）
+- **字段详情** — 查看任一媒体文件的完整 ContentProvider 列值，适合调试和开发者使用，支持字段搜索
+- **权限适配** — Android 13+ 使用细粒度权限 (`READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO`)
+- **Material You** — Android 12+ 动态取色，同时提供深色/浅色主题
+- **边缘到边缘** — 全面屏适配，状态栏透明沉浸
 
 ## 技术栈
 
@@ -21,6 +22,7 @@
 | 架构 | ViewModel + StateFlow |
 | 图片加载 | Coil |
 | 视频播放 | Media3 ExoPlayer |
+| OpenGL | GLSurfaceView + GLES 2.0 (自定义渲染器) |
 | 构建 | Gradle Kotlin DSL + Version Catalog |
 | 语言 | Kotlin 2.2 |
 
@@ -34,11 +36,17 @@ app/src/main/java/com/senk/mediastoreviewer/
 ├── navigation/
 │   └── AppNavigation.kt      # 路由定义与 NavHost
 ├── ui/
+│   ├── glview/
+│   │   ├── GLPhotoWall.kt        # Compose 桥接 — AndroidView + 异步纹理加载
+│   │   ├── GLPhotoWallRenderer.kt # GLSurfaceView.Renderer — 视口裁剪、滚动、点击/拖拽
+│   │   ├── GLTextureManager.kt    # 线程安全 LRU 纹理缓存（max 64）
+│   │   ├── GLThumbnailLoader.kt   # ContentResolver.loadThumbnail 封装
+│   │   └── GLShaders.kt           # 顶点/片段着色器 + createProgram
 │   ├── screens/
-│   │   ├── DirectoryListScreen.kt  # 目录列表页
-│   │   ├── FileListScreen.kt       # 文件列表页
-│   │   ├── FileDetailScreen.kt     # 字段详情页
-│   │   └── MediaViewerScreen.kt    # 图片/视频全屏预览页
+│   │   ├── DirectoryListScreen.kt # 目录列表页（3 列 LazyVerticalGrid）
+│   │   ├── PhotoWallScreen.kt     # OpenGL 照片墙页（按目录筛选）
+│   │   ├── MediaViewerScreen.kt   # 图片/视频全屏预览页
+│   │   └── FileDetailScreen.kt    # 字段详情页（含搜索过滤）
 │   └── theme/
 │       ├── Color.kt          # 调色板
 │       ├── Theme.kt          # 主题配置
@@ -54,7 +62,7 @@ app/src/main/java/com/senk/mediastoreviewer/
 
 - **Android Studio**（最新稳定版）
 - **JDK 11+**
-- **Android SDK 36**（带 API Level 35 及以上的设备或模拟器）
+- **Android SDK 36**（需要 API Level 35 及以上的设备或模拟器）
 
 ### 步骤
 
@@ -81,8 +89,9 @@ cd mediastoreviewer
 ## 导航流程
 
 ```
-目录列表 → 文件列表 → 字段详情
-                ↘       → 全屏预览
+目录列表 → 照片墙（按目录筛选） → 全屏预览（图片/视频）
+                                     ↓
+                                  字段详情
 ```
 
 ## 许可证
